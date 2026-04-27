@@ -1120,7 +1120,7 @@ function Speed_Library:CreateWindow(Config)
 			function Item:AddButton(Config)
 				local Title = Config[1] or Config.Title or ""
 				local Content = Config[2] or Config.Content or ""
-				local Icon = Config[3] or Config.Icon or "play"
+				local Icon = Config[3] or Config.Icon or "rbxassetid://10734898355"
 				local Callback = Config[4] or Config.Callback or function() end
 				local Funcs_Button = {}
 
