@@ -345,23 +345,58 @@ function Speed_Library:SetNotification(Config)
 		NotificationFrame.Size = UDim2.new(1, 0, 0, TextLabel2.AbsoluteSize.Y + 40)
 	end
 
-	local Waitted = false
+	local NotificationObject = {}
+	local Closing = false
 
-	function Notification:Close()
-		if Waitted then return false end
-		Waitted = true
-		TweenService:Create(NotificationFrameReal, TweenInfo.new(tonumber(Time), Enum.EasingStyle.Back, Enum.EasingDirection.InOut), { Position = UDim2.new(0, 400, 0, 0) }):Play()
-		task.wait(tonumber(Time) / 1.2)
-		NotificationFrame:Destroy()
-		Waitted = false
+	local function TweenNotificationTransparency(alpha, duration)
+		for _, object in ipairs(NotificationFrameReal:GetDescendants()) do
+			local props = {}
+			if object:IsA("GuiObject") then
+				props.BackgroundTransparency = alpha
+			end
+			if object:IsA("TextLabel") or object:IsA("TextButton") or object:IsA("TextBox") then
+				props.TextTransparency = alpha
+			end
+			if object:IsA("ImageLabel") or object:IsA("ImageButton") then
+				props.ImageTransparency = alpha
+			end
+			if object:IsA("UIStroke") then
+				props.Transparency = alpha
+			end
+			if next(props) then
+				pcall(function()
+					TweenService:Create(object, TweenInfo.new(duration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), props):Play()
+				end)
+			end
+		end
 	end
 
-	Close.Activated:Connect(function() Notification:Close() end)
-	TweenService:Create(NotificationFrameReal, TweenInfo.new(tonumber(Time), Enum.EasingStyle.Back, Enum.EasingDirection.InOut), { Position = UDim2.new(0, 0, 0, 0) }):Play()
-	task.wait(tonumber(Delay))
-	Notification:Close()
+	function NotificationObject:Close()
+		if Closing then return false end
+		Closing = true
 
-	return Notification
+		local duration = tonumber(Time) or 0.35
+		TweenNotificationTransparency(1, duration)
+		TweenService:Create(NotificationFrameReal, TweenInfo.new(duration, Enum.EasingStyle.Back, Enum.EasingDirection.InOut), { Position = UDim2.new(0, 400, 0, 0), BackgroundTransparency = 1 }):Play()
+
+		task.delay(duration + 0.05, function()
+			if NotificationGui then
+				NotificationGui:Destroy()
+			elseif NotificationFrame then
+				NotificationFrame:Destroy()
+			end
+		end)
+
+		return true
+	end
+
+	Close.Activated:Connect(function() NotificationObject:Close() end)
+	TweenService:Create(NotificationFrameReal, TweenInfo.new(tonumber(Time), Enum.EasingStyle.Back, Enum.EasingDirection.InOut), { Position = UDim2.new(0, 0, 0, 0) }):Play()
+	task.delay(tonumber(Delay) or 5, function()
+		NotificationObject:Close()
+	end)
+
+	return NotificationObject
 end
 
 function Speed_Library:CreateWindow(Config)
