@@ -15,7 +15,7 @@ local Icons = nil
 local function LoadIcons()
 	-- Try common paths first; fallback gracefully
 	local ok, result = pcall(function()
-		return loadstring(game:HttpGet("https://raw.githubusercontent.com/latte-soft/lucide-roblox/master/Icons.lua"))()
+		return loadstring(game:HttpGet("https://raw.githubusercontent.com/biarzxc1/kaizenhub/refs/heads/main/Icons.lua"))()
 	end)
 	if ok and type(result) == "table" then
 		Icons = result
