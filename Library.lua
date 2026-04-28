@@ -13,8 +13,11 @@ local HttpService = game:GetService("HttpService")
 -- /// Icon Resolver (uses Icons.lua)
 local Icons = nil
 local function LoadIcons()
-	-- Try common paths first; fallback gracefully
+	-- Prefer local Icons.lua when available, then fallback to hosted icons.
 	local ok, result = pcall(function()
+		if typeof(readfile) == "function" and typeof(isfile) == "function" and isfile("Icons.lua") then
+			return loadstring(readfile("Icons.lua"))()
+		end
 		return loadstring(game:HttpGet("https://raw.githubusercontent.com/biarzxc1/kaizenhub/refs/heads/main/Icons.lua"))()
 	end)
 	if ok and type(result) == "table" then
@@ -992,72 +995,111 @@ function Speed_Library:CreateWindow(Config)
 
 			local Item, ItemCount = {}, 0
 
-			function Item:AddParagraph(Config)
-				local Title = Config[1] or Config.Title or ""
-				local Content = Config[2] or Config.Content or ""
-				local SettingFuncs = {}
+function Item:AddParagraph(Config)
+	local Title = Config[1] or Config.Title or ""
+	local Content = Config[2] or Config.Content or ""
+	local Icon = Config[3] or Config.Icon or ""
+	local AccentColor = Config.AccentColor or Config.Color
+	local BackgroundColor = Config.BackgroundColor3 or AccentColor or Color3.fromRGB(255, 255, 255)
+	local BackgroundTransparency = Config.BackgroundTransparency
+	if BackgroundTransparency == nil then
+		BackgroundTransparency = AccentColor and 0.86 or 0.935
+	end
+	local TitleColor = Config.TitleColor or (AccentColor and Color3.fromRGB(255, 236, 145) or Color3.fromRGB(231, 231, 231))
+	local ContentColor = Config.ContentColor or Color3.fromRGB(255, 255, 255)
+	local ContentTransparency = Config.ContentTransparency
+	if ContentTransparency == nil then
+		ContentTransparency = AccentColor and 0.12 or 0.6
+	end
+	local IconColor = Config.IconColor or AccentColor or Color3.fromRGB(230, 230, 230)
+	local HasIcon = Icon ~= nil and tostring(Icon) ~= ""
+	local TextLeft = HasIcon and 36 or 10
+	local SettingFuncs = {}
 
-				local Paragraph = Custom:Create("Frame", {
-					BackgroundColor3 = Color3.fromRGB(255, 255, 255),
-					BackgroundTransparency = 0.935,
-					BorderSizePixel = 0,
-					LayoutOrder = ItemCount,
-					Size = UDim2.new(1, 0, 0, 35),
-					Name = "Paragraph"
-				}, SectionAdd)
+	local Paragraph = Custom:Create("Frame", {
+		BackgroundColor3 = BackgroundColor,
+		BackgroundTransparency = BackgroundTransparency,
+		BorderSizePixel = 0,
+		LayoutOrder = ItemCount,
+		Size = UDim2.new(1, 0, 0, 35),
+		Name = "Paragraph"
+	}, SectionAdd)
 
-				Custom:Create("UICorner", { CornerRadius = UDim.new(0, 4) }, Paragraph)
+	Custom:Create("UICorner", { CornerRadius = UDim.new(0, 4) }, Paragraph)
 
-				local ParagraphTitle = Custom:Create("TextLabel", {
-					Font = Enum.Font.GothamBold,
-					Text = Title,
-					TextColor3 = Color3.fromRGB(231, 231, 231),
-					TextSize = 13,
-					TextXAlignment = Enum.TextXAlignment.Left,
-					TextYAlignment = Enum.TextYAlignment.Top,
-					BackgroundTransparency = 0.999,
-					BorderSizePixel = 0,
-					Position = UDim2.new(0, 10, 0, 10),
-					Size = UDim2.new(1, -16, 0, 13),
-					Name = "ParagraphTitle"
-				}, Paragraph)
+	if AccentColor then
+		Custom:Create("UIStroke", {
+			Color = AccentColor,
+			Thickness = 1,
+			Transparency = 0.35
+		}, Paragraph)
+	end
 
-				local ParagraphContent = Custom:Create("TextLabel", {
-					Font = Enum.Font.GothamBold,
-					Text = Content,
-					TextColor3 = Color3.fromRGB(255, 255, 255),
-					TextSize = 12,
-					TextTransparency = 0.6,
-					TextXAlignment = Enum.TextXAlignment.Left,
-					TextYAlignment = Enum.TextYAlignment.Bottom,
-					BackgroundTransparency = 0.999,
-					BorderSizePixel = 0,
-					Position = UDim2.new(0, 10, 0, 23),
-					Name = "ParagraphContent"
-				}, Paragraph)
+	if HasIcon then
+		Custom:Create("ImageLabel", {
+			Name = "ParagraphIcon",
+			Image = ResolveIcon(Icon),
+			ImageColor3 = IconColor,
+			AnchorPoint = Vector2.new(0, 0),
+			BackgroundTransparency = 0.999,
+			BorderSizePixel = 0,
+			Position = UDim2.new(0, 10, 0, 10),
+			Size = UDim2.new(0, 16, 0, 16)
+		}, Paragraph)
+	end
 
-				local function UpdateParagraphSize()
-					ParagraphContent.TextWrapped = false
-					local lineCount = math.ceil(ParagraphContent.TextBounds.X / ParagraphContent.AbsoluteSize.X)
-					ParagraphContent.Size = UDim2.new(1, -16, 0, 12 + (12 * lineCount))
-					Paragraph.Size = UDim2.new(1, 0, 0, ParagraphContent.AbsoluteSize.Y + 33)
-					ParagraphContent.TextWrapped = true
-					UpdateSizeSection()
-				end
+	local ParagraphTitle = Custom:Create("TextLabel", {
+		Font = Enum.Font.GothamBold,
+		Text = Title,
+		TextColor3 = TitleColor,
+		TextSize = 13,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		BackgroundTransparency = 0.999,
+		BorderSizePixel = 0,
+		Position = UDim2.new(0, TextLeft, 0, 10),
+		Size = UDim2.new(1, -(TextLeft + 8), 0, 13),
+		Name = "ParagraphTitle"
+	}, Paragraph)
 
-				UpdateParagraphSize()
-				ParagraphContent:GetPropertyChangedSignal("AbsoluteSize"):Connect(UpdateParagraphSize)
+	local ParagraphContent = Custom:Create("TextLabel", {
+		Font = Enum.Font.GothamBold,
+		Text = Content,
+		TextColor3 = ContentColor,
+		TextSize = 12,
+		TextTransparency = ContentTransparency,
+		TextXAlignment = Enum.TextXAlignment.Left,
+		TextYAlignment = Enum.TextYAlignment.Bottom,
+		BackgroundTransparency = 0.999,
+		BorderSizePixel = 0,
+		Position = UDim2.new(0, TextLeft, 0, 23),
+		Name = "ParagraphContent"
+	}, Paragraph)
 
-				function SettingFuncs:Set(Config)
-					local Title = Config[1] or Config.Title or ""
-					local Content = Config[2] or Config.Content or ""
-					ParagraphTitle.Text = Title
-					ParagraphContent.Text = Content
-					UpdateParagraphSize()
-				end
+	local function UpdateParagraphSize()
+		ParagraphContent.TextWrapped = false
+		local width = math.max(ParagraphContent.AbsoluteSize.X, 1)
+		local lineCount = math.max(1, math.ceil(ParagraphContent.TextBounds.X / width))
+		ParagraphContent.Size = UDim2.new(1, -(TextLeft + 8), 0, 12 + (12 * lineCount))
+		Paragraph.Size = UDim2.new(1, 0, 0, ParagraphContent.AbsoluteSize.Y + 33)
+		ParagraphContent.TextWrapped = true
+		UpdateSizeSection()
+	end
 
-				return SettingFuncs
-			end
+	UpdateParagraphSize()
+	ParagraphContent:GetPropertyChangedSignal("AbsoluteSize"):Connect(UpdateParagraphSize)
+
+	function SettingFuncs:Set(Config)
+		local NewTitle = Config[1] or Config.Title or Title
+		local NewContent = Config[2] or Config.Content or Content
+		ParagraphTitle.Text = NewTitle
+		ParagraphContent.Text = NewContent
+		UpdateParagraphSize()
+	end
+
+	ItemCount += 1
+	return SettingFuncs
+end
 
 			function Item:AddSeperator(Config)
 				local Title = Config[1] or Config.Title or ""
