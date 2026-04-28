@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local Player = Players.LocalPlayer
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local TextService = game:GetService("TextService")
 local UserInputService = game:GetService("UserInputService")
 local VirtualUser = game:GetService("VirtualUser")
 local HttpService = game:GetService("HttpService")
@@ -999,40 +1000,62 @@ function Item:AddParagraph(Config)
 	local Title = Config[1] or Config.Title or ""
 	local Content = Config[2] or Config.Content or ""
 	local Icon = Config[3] or Config.Icon or ""
-	local AccentColor = Config.AccentColor or Config.Color
-	local BackgroundColor = Config.BackgroundColor3 or AccentColor or Color3.fromRGB(255, 255, 255)
+	local IsNotice = Config.Style == "Notice" or Config.Variant == "Notice" or Config.Notice == true
+	local AccentColor = Config.AccentColor or Config.Color or (IsNotice and Color3.fromRGB(255, 205, 55) or nil)
+	local BackgroundColor = Config.BackgroundColor3 or (IsNotice and Color3.fromRGB(42, 34, 10) or (AccentColor or Color3.fromRGB(255, 255, 255)))
 	local BackgroundTransparency = Config.BackgroundTransparency
 	if BackgroundTransparency == nil then
-		BackgroundTransparency = AccentColor and 0.86 or 0.935
+		BackgroundTransparency = IsNotice and 0.18 or (AccentColor and 0.86 or 0.935)
 	end
-	local TitleColor = Config.TitleColor or (AccentColor and Color3.fromRGB(255, 236, 145) or Color3.fromRGB(231, 231, 231))
-	local ContentColor = Config.ContentColor or Color3.fromRGB(255, 255, 255)
+	local TitleColor = Config.TitleColor or (IsNotice and Color3.fromRGB(255, 238, 150) or (AccentColor and Color3.fromRGB(255, 236, 145) or Color3.fromRGB(231, 231, 231)))
+	local ContentColor = Config.ContentColor or (IsNotice and Color3.fromRGB(255, 255, 240) or Color3.fromRGB(255, 255, 255))
 	local ContentTransparency = Config.ContentTransparency
 	if ContentTransparency == nil then
-		ContentTransparency = AccentColor and 0.12 or 0.6
+		ContentTransparency = IsNotice and 0.03 or (AccentColor and 0.12 or 0.6)
 	end
 	local IconColor = Config.IconColor or AccentColor or Color3.fromRGB(230, 230, 230)
 	local HasIcon = Icon ~= nil and tostring(Icon) ~= ""
-	local TextLeft = HasIcon and 36 or 10
+	local IconSize = tonumber(Config.IconSize) or (IsNotice and 18 or 16)
+	local LeftPadding = tonumber(Config.LeftPadding) or (IsNotice and 12 or 10)
+	local RightPadding = tonumber(Config.RightPadding) or (IsNotice and 12 or 8)
+	local TopPadding = tonumber(Config.TopPadding) or (IsNotice and 9 or 10)
+	local BottomPadding = tonumber(Config.BottomPadding) or (IsNotice and 10 or 8)
+	local TextGap = tonumber(Config.TextGap) or (IsNotice and 3 or 0)
+	local TextLeft = HasIcon and (LeftPadding + IconSize + (IsNotice and 10 or 10)) or LeftPadding
+	local MinHeight = tonumber(Config.MinHeight) or (IsNotice and 58 or 35)
 	local SettingFuncs = {}
 
 	local Paragraph = Custom:Create("Frame", {
 		BackgroundColor3 = BackgroundColor,
 		BackgroundTransparency = BackgroundTransparency,
 		BorderSizePixel = 0,
+		ClipsDescendants = false,
 		LayoutOrder = ItemCount,
-		Size = UDim2.new(1, 0, 0, 35),
-		Name = "Paragraph"
+		Size = UDim2.new(1, 0, 0, MinHeight),
+		Name = IsNotice and "NoticeParagraph" or "Paragraph"
 	}, SectionAdd)
 
-	Custom:Create("UICorner", { CornerRadius = UDim.new(0, 4) }, Paragraph)
+	Custom:Create("UICorner", { CornerRadius = UDim.new(0, IsNotice and 6 or 4) }, Paragraph)
 
 	if AccentColor then
 		Custom:Create("UIStroke", {
 			Color = AccentColor,
-			Thickness = 1,
-			Transparency = 0.35
+			Thickness = IsNotice and 1.2 or 1,
+			Transparency = IsNotice and 0.25 or 0.35
 		}, Paragraph)
+	end
+
+	local AccentBar = nil
+	if IsNotice and AccentColor then
+		AccentBar = Custom:Create("Frame", {
+			BackgroundColor3 = AccentColor,
+			BackgroundTransparency = 0,
+			BorderSizePixel = 0,
+			Position = UDim2.new(0, 0, 0, 0),
+			Size = UDim2.new(0, 3, 1, 0),
+			Name = "NoticeAccent"
+		}, Paragraph)
+		Custom:Create("UICorner", { CornerRadius = UDim.new(0, 6) }, AccentBar)
 	end
 
 	if HasIcon then
@@ -1041,10 +1064,10 @@ function Item:AddParagraph(Config)
 			Image = ResolveIcon(Icon),
 			ImageColor3 = IconColor,
 			AnchorPoint = Vector2.new(0, 0),
-			BackgroundTransparency = 0.999,
+			BackgroundTransparency = 1,
 			BorderSizePixel = 0,
-			Position = UDim2.new(0, 10, 0, 10),
-			Size = UDim2.new(0, 16, 0, 16)
+			Position = UDim2.new(0, LeftPadding, 0, TopPadding + (IsNotice and 1 or 0)),
+			Size = UDim2.new(0, IconSize, 0, IconSize)
 		}, Paragraph)
 	end
 
@@ -1052,13 +1075,15 @@ function Item:AddParagraph(Config)
 		Font = Enum.Font.GothamBold,
 		Text = Title,
 		TextColor3 = TitleColor,
-		TextSize = 13,
+		TextSize = IsNotice and 13 or 13,
+		TextTransparency = 0,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextYAlignment = Enum.TextYAlignment.Top,
-		BackgroundTransparency = 0.999,
+		TextWrapped = false,
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Position = UDim2.new(0, TextLeft, 0, 10),
-		Size = UDim2.new(1, -(TextLeft + 8), 0, 13),
+		Position = UDim2.new(0, TextLeft, 0, TopPadding),
+		Size = UDim2.new(1, -(TextLeft + RightPadding), 0, 14),
 		Name = "ParagraphTitle"
 	}, Paragraph)
 
@@ -1066,41 +1091,64 @@ function Item:AddParagraph(Config)
 		Font = Enum.Font.GothamBold,
 		Text = Content,
 		TextColor3 = ContentColor,
-		TextSize = 12,
+		TextSize = IsNotice and 12 or 12,
 		TextTransparency = ContentTransparency,
+		TextWrapped = true,
 		TextXAlignment = Enum.TextXAlignment.Left,
-		TextYAlignment = Enum.TextYAlignment.Bottom,
-		BackgroundTransparency = 0.999,
+		TextYAlignment = Enum.TextYAlignment.Top,
+		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
-		Position = UDim2.new(0, TextLeft, 0, 23),
+		Position = UDim2.new(0, TextLeft, 0, TopPadding + 15 + TextGap),
+		Size = UDim2.new(1, -(TextLeft + RightPadding), 0, 14),
 		Name = "ParagraphContent"
 	}, Paragraph)
 
+	local UpdateQueued = false
+	local function getTextHeight(label, maxWidth, fallbackHeight)
+		local ok, size = pcall(function()
+			return TextService:GetTextSize(tostring(label.Text or ""), label.TextSize, label.Font, Vector2.new(maxWidth, math.huge))
+		end)
+		if ok and size then
+			return math.max(fallbackHeight or label.TextSize, math.ceil(size.Y))
+		end
+		return fallbackHeight or label.TextSize
+	end
+
 	local function UpdateParagraphSize()
-		ParagraphContent.TextWrapped = false
-		local width = math.max(ParagraphContent.AbsoluteSize.X, 1)
-		local lineCount = math.max(1, math.ceil(ParagraphContent.TextBounds.X / width))
-		ParagraphContent.Size = UDim2.new(1, -(TextLeft + 8), 0, 12 + (12 * lineCount))
-		Paragraph.Size = UDim2.new(1, 0, 0, ParagraphContent.AbsoluteSize.Y + 33)
-		ParagraphContent.TextWrapped = true
-		UpdateSizeSection()
+		if UpdateQueued then return end
+		UpdateQueued = true
+		task.defer(function()
+			UpdateQueued = false
+			local availableWidth = math.max(Paragraph.AbsoluteSize.X - TextLeft - RightPadding, 80)
+			local titleHeight = Title ~= "" and 14 or 0
+			local titleBottom = TopPadding + titleHeight
+			local contentTop = titleBottom + (titleHeight > 0 and TextGap or 0)
+			local contentHeight = getTextHeight(ParagraphContent, availableWidth, 14)
+			ParagraphTitle.Size = UDim2.new(0, availableWidth, 0, titleHeight)
+			ParagraphContent.Position = UDim2.new(0, TextLeft, 0, contentTop)
+			ParagraphContent.Size = UDim2.new(0, availableWidth, 0, contentHeight + 2)
+			local targetHeight = math.max(MinHeight, contentTop + contentHeight + BottomPadding)
+			Paragraph.Size = UDim2.new(1, 0, 0, targetHeight)
+			if AccentBar then AccentBar.Size = UDim2.new(0, 3, 1, 0) end
+			UpdateSizeSection()
+		end)
 	end
 
 	UpdateParagraphSize()
-	ParagraphContent:GetPropertyChangedSignal("AbsoluteSize"):Connect(UpdateParagraphSize)
+	Paragraph:GetPropertyChangedSignal("AbsoluteSize"):Connect(UpdateParagraphSize)
+	ParagraphContent:GetPropertyChangedSignal("TextBounds"):Connect(UpdateParagraphSize)
 
 	function SettingFuncs:Set(Config)
-		local NewTitle = Config[1] or Config.Title or Title
-		local NewContent = Config[2] or Config.Content or Content
-		ParagraphTitle.Text = NewTitle
-		ParagraphContent.Text = NewContent
+		Title = Config[1] or Config.Title or Title
+		Content = Config[2] or Config.Content or Content
+		ParagraphTitle.Text = Title
+		ParagraphContent.Text = Content
 		UpdateParagraphSize()
 	end
 
 	ItemCount += 1
 	return SettingFuncs
 end
-
 			function Item:AddSeperator(Config)
 				local Title = Config[1] or Config.Title or ""
 				local Sep_Funcs = {}
