@@ -218,6 +218,225 @@ function Speed_Library:SetIcons(IconsTable)
 	Speed_Library.Icons = IconsTable
 end
 
+-- /// Custom image URL loader (uses getcustomasset when available)
+local function LoadCustomImage(url, fileName)
+	if not url or url == "" then return "" end
+	-- Direct rbxassetid passthrough
+	if string.find(url, "rbxassetid://") or string.find(url, "rbxasset://") then
+		return url
+	end
+	local hasFS = (typeof(writefile) == "function") and (typeof(getcustomasset) == "function" or typeof(getsynasset) == "function")
+	if not hasFS then return url end
+	fileName = fileName or ("kaizenhub_" .. tostring(math.random(100000, 999999)) .. ".png")
+	local ok, data = pcall(function() return game:HttpGet(url) end)
+	if not ok or type(data) ~= "string" or #data == 0 then return "" end
+	local okWrite = pcall(function() writefile(fileName, data) end)
+	if not okWrite then return "" end
+	local okAsset, asset = pcall(function()
+		return (getcustomasset or getsynasset)(fileName)
+	end)
+	if okAsset and type(asset) == "string" then return asset end
+	return ""
+end
+
+-- /// Loader / Splash screen
+function Speed_Library:CreateLoader(Config)
+	Config = Config or {}
+	local Title    = Config.Title    or "Kaizen Hub"
+	local Subtitle = Config.Subtitle or "Loading resources..."
+	local IconUrl  = Config.Icon     or "https://i.ibb.co/ZpCvx0Xf/06fa051d4123b6184cadfc4fa5821f5a.jpg"
+	local Duration = tonumber(Config.Duration) or 3
+	local AutoClose = Config.AutoClose ~= false
+
+	local IconAsset = LoadCustomImage(IconUrl, "kaizenhub_loader.png")
+
+	local LoaderGui = Custom:Create("ScreenGui", {
+		Name = "KaizenLoader",
+		ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
+		IgnoreGuiInset = true,
+		DisplayOrder = 9999,
+	}, RunService:IsStudio() and Player.PlayerGui or (gethui and gethui() or (cloneref and cloneref(game:GetService("CoreGui"))) or game:GetService("CoreGui")))
+
+	-- Dim backdrop
+	local Backdrop = Custom:Create("Frame", {
+		BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 1),
+		Name = "Backdrop",
+	}, LoaderGui)
+
+	-- Card
+	local Card = Custom:Create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(360, 220),
+		BackgroundColor3 = Color3.fromRGB(18, 18, 18),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Name = "Card",
+	}, Backdrop)
+	Custom:Create("UICorner", { CornerRadius = UDim.new(0, 12) }, Card)
+	local CardStroke = Custom:Create("UIStroke", {
+		Color = Color3.fromRGB(80, 80, 80), Thickness = 1.4, Transparency = 1,
+	}, Card)
+	Custom:WhiteGradient(CardStroke, 90)
+
+	-- Icon ring
+	local IconHolder = Custom:Create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 22),
+		Size = UDim2.fromOffset(64, 64),
+		BackgroundColor3 = Color3.fromRGB(28, 28, 28),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+	}, Card)
+	Custom:Create("UICorner", { CornerRadius = UDim.new(1, 0) }, IconHolder)
+	local IconStroke = Custom:Create("UIStroke", {
+		Color = Color3.fromRGB(220, 220, 220), Thickness = 1.6, Transparency = 1,
+	}, IconHolder)
+	Custom:WhiteGradient(IconStroke, 90)
+
+	local IconImage = Custom:Create("ImageLabel", {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(1, 1),
+		BackgroundTransparency = 1,
+		Image = IconAsset ~= "" and IconAsset or IconUrl,
+		ImageTransparency = 1,
+		ScaleType = Enum.ScaleType.Crop,
+	}, IconHolder)
+	Custom:Create("UICorner", { CornerRadius = UDim.new(1, 0) }, IconImage)
+
+	-- Title
+	local TitleLabel = Custom:Create("TextLabel", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 96),
+		Size = UDim2.new(1, -24, 0, 22),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.GothamBold,
+		Text = Title,
+		TextColor3 = Color3.fromRGB(255, 255, 255),
+		TextSize = 16,
+		TextTransparency = 1,
+	}, Card)
+
+	-- Subtitle
+	local SubtitleLabel = Custom:Create("TextLabel", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 120),
+		Size = UDim2.new(1, -24, 0, 18),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.Gotham,
+		Text = Subtitle,
+		TextColor3 = Color3.fromRGB(200, 200, 200),
+		TextSize = 12,
+		TextTransparency = 1,
+	}, Card)
+	Custom:WhiteGradient(SubtitleLabel, 0)
+
+	-- Progress bar
+	local BarBg = Custom:Create("Frame", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 156),
+		Size = UDim2.new(1, -40, 0, 6),
+		BackgroundColor3 = Color3.fromRGB(40, 40, 40),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+	}, Card)
+	Custom:Create("UICorner", { CornerRadius = UDim.new(1, 0) }, BarBg)
+
+	local BarFill = Custom:Create("Frame", {
+		BackgroundColor3 = Color3.fromRGB(245, 245, 245),
+		BackgroundTransparency = 1,
+		BorderSizePixel = 0,
+		Size = UDim2.new(0, 0, 1, 0),
+	}, BarBg)
+	Custom:Create("UICorner", { CornerRadius = UDim.new(1, 0) }, BarFill)
+	Custom:WhiteGradient(BarFill, 0)
+
+	-- Status
+	local StatusLabel = Custom:Create("TextLabel", {
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 174),
+		Size = UDim2.new(1, -24, 0, 16),
+		BackgroundTransparency = 1,
+		Font = Enum.Font.Gotham,
+		Text = "Initializing...",
+		TextColor3 = Color3.fromRGB(170, 170, 170),
+		TextSize = 11,
+		TextTransparency = 1,
+	}, Card)
+
+	-- Fade in
+	TweenService:Create(Backdrop, TweenInfo.new(0.35), { BackgroundTransparency = 0.35 }):Play()
+	TweenService:Create(Card, TweenInfo.new(0.45, Enum.EasingStyle.Quint), { BackgroundTransparency = 0.02 }):Play()
+	TweenService:Create(CardStroke, TweenInfo.new(0.45), { Transparency = 0.2 }):Play()
+	TweenService:Create(IconImage, TweenInfo.new(0.5), { ImageTransparency = 0 }):Play()
+	TweenService:Create(IconStroke, TweenInfo.new(0.5), { Transparency = 0.1 }):Play()
+	TweenService:Create(TitleLabel, TweenInfo.new(0.5), { TextTransparency = 0 }):Play()
+	TweenService:Create(SubtitleLabel, TweenInfo.new(0.5), { TextTransparency = 0.1 }):Play()
+	TweenService:Create(BarBg, TweenInfo.new(0.5), { BackgroundTransparency = 0.4 }):Play()
+	TweenService:Create(BarFill, TweenInfo.new(0.5), { BackgroundTransparency = 0 }):Play()
+	TweenService:Create(StatusLabel, TweenInfo.new(0.5), { TextTransparency = 0.15 }):Play()
+
+	local LoaderObj = {}
+	LoaderObj.Gui = LoaderGui
+
+	function LoaderObj:UpdateStatus(text, percent)
+		if text then StatusLabel.Text = tostring(text) end
+		if percent then
+			percent = math.clamp(tonumber(percent) or 0, 0, 100)
+			TweenService:Create(BarFill, TweenInfo.new(0.35, Enum.EasingStyle.Quart), {
+				Size = UDim2.new(percent / 100, 0, 1, 0),
+			}):Play()
+		end
+	end
+
+	function LoaderObj:SetTitle(t) TitleLabel.Text = tostring(t) end
+	function LoaderObj:SetSubtitle(t) SubtitleLabel.Text = tostring(t) end
+
+	function LoaderObj:Finish(callback)
+		LoaderObj:UpdateStatus("Ready", 100)
+		task.wait(0.35)
+		TweenService:Create(Backdrop, TweenInfo.new(0.4), { BackgroundTransparency = 1 }):Play()
+		TweenService:Create(Card, TweenInfo.new(0.4, Enum.EasingStyle.Quint), { BackgroundTransparency = 1 }):Play()
+		TweenService:Create(CardStroke, TweenInfo.new(0.4), { Transparency = 1 }):Play()
+		TweenService:Create(IconImage, TweenInfo.new(0.4), { ImageTransparency = 1 }):Play()
+		TweenService:Create(IconStroke, TweenInfo.new(0.4), { Transparency = 1 }):Play()
+		TweenService:Create(TitleLabel, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+		TweenService:Create(SubtitleLabel, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+		TweenService:Create(BarBg, TweenInfo.new(0.4), { BackgroundTransparency = 1 }):Play()
+		TweenService:Create(BarFill, TweenInfo.new(0.4), { BackgroundTransparency = 1 }):Play()
+		TweenService:Create(StatusLabel, TweenInfo.new(0.4), { TextTransparency = 1 }):Play()
+		task.wait(0.45)
+		LoaderGui:Destroy()
+		if callback then pcall(callback) end
+	end
+
+	-- Auto-run a fake progress sequence if requested
+	if AutoClose then
+		task.spawn(function()
+			local steps = {
+				{ 15, "Fetching assets..." },
+				{ 35, "Loading icons..." },
+				{ 55, "Building interface..." },
+				{ 75, "Applying theme..." },
+				{ 92, "Finalizing..." },
+			}
+			local perStep = Duration / (#steps + 1)
+			for _, s in ipairs(steps) do
+				task.wait(perStep)
+				LoaderObj:UpdateStatus(s[2], s[1])
+			end
+		end)
+	end
+
+	return LoaderObj
+end
+
+
+
 function Speed_Library:SetNotification(Config)
 	local Title = Config[1] or Config.Title or ""
 	local Description = Config[2] or Config.Description or ""
